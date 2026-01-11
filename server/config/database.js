@@ -12,10 +12,7 @@ const connectDB = async () => {
       throw new Error('MONGODB_URI environment variable is not defined');
     }
 
-    await mongoose.connect(mongoURI, {
-      useNewUrlParser: true,
-      useUnifiedTopology: true
-    });
+    await mongoose.connect(mongoURI);
 
     console.log('✅ MongoDB Connected Successfully');
   } catch (error) {
@@ -24,22 +21,4 @@ const connectDB = async () => {
   }
 };
 
-/**
- * Disconnect from MongoDB
- * @returns {Promise<void>}
- */
-const disconnectDB = async () => {
-  try {
-    await mongoose.disconnect();
-    console.log('✅ MongoDB Disconnected Successfully');
-  } catch (error) {
-    console.error('❌ MongoDB Disconnection Error:', error.message);
-    process.exit(1);
-  }
-};
-
-module.exports = {
-  connectDB,
-  disconnectDB
-};
-
+module.exports = { connectDB };

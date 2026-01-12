@@ -27,7 +27,7 @@ const sortTasks = (tasks = [], { sortBy = 'dueDate', order = 'asc' } = {}) => {
     const bv = b.dueDate ? new Date(b.dueDate).getTime() : null;
 
     if (av === null && bv === null) return 0;
-    if (av === null) return 1; 
+    if (av === null) return 1;
     if (bv === null) return -1;
 
     return (av - bv) * sortOrder;

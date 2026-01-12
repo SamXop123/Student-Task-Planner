@@ -2,6 +2,12 @@ const mongoose = require('mongoose');
 
 const taskSchema = new mongoose.Schema(
   {
+    userId: {
+      type: String,
+      required: [true, 'User ID is required'],
+      immutable: true,
+      index: true
+    },
     title: {
       type: String,
       required: [true, 'Task title is required'],
@@ -25,7 +31,6 @@ const taskSchema = new mongoose.Schema(
       type: Date,
       validate: {
         validator: function(value) {
-          // Optional: Validate that due date is not in the past (only for new tasks)
           if (this.isNew && value) {
             return value >= new Date().setHours(0, 0, 0, 0);
           }
@@ -40,17 +45,15 @@ const taskSchema = new mongoose.Schema(
     }
   },
   {
-    timestamps: true, // Automatically adds createdAt and updatedAt fields
+    timestamps: true,
     toJSON: { virtuals: true },
     toObject: { virtuals: true }
   }
 );
 
-// Index for faster queries on commonly used fields
-taskSchema.index({ completed: 1, dueDate: 1 });
-taskSchema.index({ priority: 1 });
+taskSchema.index({ userId: 1, completed: 1, dueDate: 1 });
+taskSchema.index({ userId: 1, priority: 1 });
 
-// Virtual property to check if task is overdue
 taskSchema.virtual('isOverdue').get(function() {
   if (!this.dueDate || this.completed) {
     return false;
@@ -58,20 +61,15 @@ taskSchema.virtual('isOverdue').get(function() {
   return new Date() > this.dueDate;
 });
 
-// Pre-save middleware example (optional)
 taskSchema.pre('save', function(next) {
-  // You can add custom logic before saving
-  // For example, auto-complete if due date is far in past
   next();
 });
 
-// Instance method to toggle completion status
 taskSchema.methods.toggleComplete = function() {
   this.completed = !this.completed;
   return this.save();
 };
 
-// Static method to find overdue tasks
 taskSchema.statics.findOverdue = function() {
   return this.find({
     dueDate: { $lt: new Date() },
@@ -79,7 +77,6 @@ taskSchema.statics.findOverdue = function() {
   });
 };
 
-// Static method to find tasks by priority
 taskSchema.statics.findByPriority = function(priority) {
   return this.find({ priority }).sort({ dueDate: 1 });
 };
@@ -87,4 +84,3 @@ taskSchema.statics.findByPriority = function(priority) {
 const Task = mongoose.model('Task', taskSchema);
 
 module.exports = Task;
-

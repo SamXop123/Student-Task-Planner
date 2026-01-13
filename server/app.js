@@ -49,11 +49,17 @@ app.get('/', (req, res) => {
   });
 });
 
-// Compatibility: if a client hits /tasks directly (missing /api), forward to /api/tasks
+// Compatibility: if a client hits /tasks directly (missing /api), forward to the same task router
+// This preserves query strings like /tasks?status=all...
 app.use('/tasks', (req, res, next) => {
-  req.url = req.originalUrl.replace(/^\/tasks/, '');
+  // When mounted at /tasks, Express sets req.baseUrl='/tasks' and req.url to the remaining path + query
+  // We can simply rewrite to the root of the task router.
+  req.url = req.url || '/';
   return taskRoutes(req, res, next);
 });
+
+// Ignore favicon requests (common in browsers)
+app.get('/favicon.ico', (req, res) => res.status(204).end());
 
 app.use('/api/tasks', taskRoutes);
 

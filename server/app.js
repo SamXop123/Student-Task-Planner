@@ -13,26 +13,31 @@ const allowedOrigins = (process.env.CLIENT_URL || '')
   .map((s) => s.trim())
   .filter(Boolean);
 
-app.use(
-  cors({
-    origin: (origin, cb) => {
-      // Allow non-browser requests or same-origin calls (no Origin header)
-      if (!origin) return cb(null, true);
+// Build CORS options once so both normal requests and preflights behave the same
+const corsOptions = {
+  origin: (origin, cb) => {
+    // Allow non-browser requests or same-origin calls (no Origin header)
+    if (!origin) return cb(null, true);
 
-      // If no allowlist is configured, default to allowing requests (useful for local dev)
-      if (allowedOrigins.length === 0) return cb(null, true);
+    // If no allowlist is configured, default to allowing requests (useful for local dev)
+    if (allowedOrigins.length === 0) return cb(null, true);
 
-      if (allowedOrigins.includes(origin)) return cb(null, true);
-      return cb(new Error('Not allowed by CORS'));
-    },
-    credentials: true,
-    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization'],
-  })
-);
+    if (allowedOrigins.includes(origin)) return cb(null, true);
 
-// Preflight
-app.options('*', cors());
+    // Return a typed error so our error handler can map it cleanly
+    const err = new Error('Not allowed by CORS');
+    err.status = 403;
+    return cb(err);
+  },
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+};
+
+app.use(cors(corsOptions));
+
+// Preflight must use the same options; otherwise it may fail even when the actual route would work
+app.options('*', cors(corsOptions));
 
 app.use(express.json({ limit: '1mb' }));
 
@@ -42,6 +47,12 @@ app.get('/', (req, res) => {
     message: 'Student Task Planner API is healthy',
     timestamp: new Date().toISOString(),
   });
+});
+
+// Compatibility: if a client hits /tasks directly (missing /api), forward to /api/tasks
+app.use('/tasks', (req, res, next) => {
+  req.url = req.originalUrl.replace(/^\/tasks/, '');
+  return taskRoutes(req, res, next);
 });
 
 app.use('/api/tasks', taskRoutes);

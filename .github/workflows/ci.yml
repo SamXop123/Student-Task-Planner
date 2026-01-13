@@ -1,0 +1,99 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  # Frontend Build and Lint
+  frontend:
+    name: Frontend Build & Lint
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v3
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v3
+      with:
+        node-version: '18'
+        cache: 'npm'
+
+    - name: Install dependencies
+      run: npm ci
+
+    - name: Lint code
+      run: npm run lint
+      continue-on-error: true
+
+    - name: Build frontend
+      run: npm run build
+      env:
+        VITE_API_URL: ${{ secrets.VITE_API_URL }}
+        VITE_FIREBASE_API_KEY: ${{ secrets.VITE_FIREBASE_API_KEY }}
+        VITE_FIREBASE_AUTH_DOMAIN: ${{ secrets.VITE_FIREBASE_AUTH_DOMAIN }}
+        VITE_FIREBASE_PROJECT_ID: ${{ secrets.VITE_FIREBASE_PROJECT_ID }}
+        VITE_FIREBASE_STORAGE_BUCKET: ${{ secrets.VITE_FIREBASE_STORAGE_BUCKET }}
+        VITE_FIREBASE_MESSAGING_SENDER_ID: ${{ secrets.VITE_FIREBASE_MESSAGING_SENDER_ID }}
+        VITE_FIREBASE_APP_ID: ${{ secrets.VITE_FIREBASE_APP_ID }}
+
+    - name: Upload build artifacts
+      uses: actions/upload-artifact@v3
+      with:
+        name: frontend-build
+        path: dist
+
+  # Backend Build and Lint
+  backend:
+    name: Backend Build & Lint
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v3
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v3
+      with:
+        node-version: '18'
+        cache: 'npm'
+        cache-dependency-path: server/package-lock.json
+
+    - name: Install dependencies
+      working-directory: ./server
+      run: npm ci
+
+    - name: Check for syntax errors
+      working-directory: ./server
+      run: node -c app.js
+
+    - name: Verify environment template exists
+      run: test -f server/.env.example
+
+  # Optional: Add tests when implemented
+  # test:
+  #   name: Run Tests
+  #   needs: [frontend, backend]
+  #   runs-on: ubuntu-latest
+  #   steps:
+  #   - uses: actions/checkout@v3
+  #   - name: Run frontend tests
+  #     run: npm test
+  #   - name: Run backend tests
+  #     working-directory: ./server
+  #     run: npm test
+
+  # Notify on success
+  notify:
+    name: Notify Success
+    needs: [frontend, backend]
+    runs-on: ubuntu-latest
+    if: success()
+
+    steps:
+    - name: Success message
+      run: |
+        echo "✅ Build successful!"
+        echo "Frontend and backend builds completed without errors."
+
